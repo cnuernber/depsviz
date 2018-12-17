@@ -8,7 +8,7 @@ Visualize deps.edn dependencies
 ## Usage
 
 ```bash
-clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.1"}}}' -m cnuernber.depsviz
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.2"}}}' -m cnuernber.depsviz
 ```
 
 ## License
