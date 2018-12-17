@@ -2,13 +2,13 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/cnuernber/depsviz.svg)](https://clojars.org/cnuernber/depsviz)
 
-Visualize deps.edn dependencies
+Visualize deps.edn dependencies.  Based on the excellent [vizdeps](https://github.com/clj-commons/vizdeps/) project.
 
 
 ## Usage
 
 ```bash
-clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.1"}}}' -m cnuernber.depsviz
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.2"}}}' -m cnuernber.depsviz
 ```
 
 ## License
