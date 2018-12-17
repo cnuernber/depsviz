@@ -180,6 +180,6 @@
   [& args]
   (let [fname (or (first args) "deps.edn")]
     (-> (build-dot fname {})
-        (dorothy-jvm/save! "target/dependencies.pdf" {:format :pdf}))
-    (browse-url "target/dependencies.pdf")
+        (dorothy-jvm/save! "dependencies.pdf" {:format :pdf}))
+    (browse-url "dependencies.pdf")
     (shutdown-agents)))
