@@ -2,7 +2,7 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/cnuernber/depsviz.svg)](https://clojars.org/cnuernber/depsviz)
 
-Visualize deps.edn dependencies.  BAsed on the excellent [vizdeps](https://github.com/clj-commons/vizdeps/) project.
+Visualize deps.edn dependencies.  Based on the excellent [vizdeps](https://github.com/clj-commons/vizdeps/) project.
 
 
 ## Usage
