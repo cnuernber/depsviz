@@ -2,7 +2,7 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/cnuernber/depsviz.svg)](https://clojars.org/cnuernber/depsviz)
 
-Visulize deps.edn dependencies
+Visualize deps.edn dependencies
 
 
 ## Usage
