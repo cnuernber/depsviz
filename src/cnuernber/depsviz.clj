@@ -6,21 +6,28 @@
             [clojure.set :as c-set]
             [dorothy.core :as dorothy-core]
             [dorothy.jvm :as dorothy-jvm]
-            [clojure.java.browse :refer [browse-url]])
+            [clojure.java.browse :refer [browse-url]]
+            [clojure.string :as str]
+            [clojure.tools.cli :as cli]
+            [clojure.java.io :as io])
   (:gen-class))
 
 
 ;;We need this one inside job.
 (defn deps->tools-graph
-  [deps-edn]
-  (let [deps-edn (cond
-                   (string? deps-edn)
-                   (-> (slurp deps-edn)
-                       edn/read-string)
-                   (map? deps-edn)
-                   deps-edn)]
-    (#'deps/expand-deps (:deps deps-edn)
-                        nil nil {:mvn/repos mvn/standard-repos} false)))
+  [deps-map args-map]
+  (let [deps-map (cond
+                   (string? deps-map)
+                   (-> (slurp deps-map)
+                       edn/read-string
+                       (assoc :mvn/repos mvn/standard-repos))
+                   (map? deps-map)
+                   deps-map)
+        {:keys [extra-deps default-deps override-deps verbose]} args-map
+        deps (merge (:deps deps-map) extra-deps)]
+    (-> deps
+        (#'deps/canonicalize-deps deps-map)
+        (#'deps/expand-deps default-deps override-deps deps-map verbose))))
 
 
 (defn- expand-path
@@ -142,8 +149,7 @@
 
 (defn build-dot
   [fname options]
-  (let [project (edn/read-string (slurp fname))
-        deps-type-tree (deps->tools-graph project)
+  (let [deps-type-tree (deps->tools-graph fname options)
         deps-graph (-> (invert-tools-deps deps-type-tree)
                        (merge-nodes-by :name selected?))
         node-list (->> (deps-graph/dfs-seq deps-graph)
@@ -158,28 +164,120 @@
                                                           (when-not (selected? node)
                                                             {:color :red}))])))
                      (concat [{:attrs {:rankdir :LR} :type ::dorothy-core/graph-attrs}
-                              [(:dot-node-id root) {:label root-name :shape :doubleoctagon}]]))]
-    (->> (:edges deps-graph)
-         (map (fn [[lhs rhs conflict-info]]
-                (let [parent-node (deps-graph/get-node deps-graph lhs)
-                      child-node (deps-graph/get-node deps-graph rhs)]
-                  [(:dot-node-id parent-node) (:dot-node-id child-node)
-                   (merge
-                    {}
-                    (when conflict-info
-                      {:color :red
-                       :label (str (:location conflict-info))
-                       :penwidth 2
-                       :weight 500}))])))
-         (concat dot-seq)
-         dorothy-core/digraph
-         dorothy-core/dot)))
+                              [(:dot-node-id root) {:label root-name :shape :doubleoctagon}]]))
+        retval (->> (:edges deps-graph)
+                    (map (fn [[lhs rhs conflict-info]]
+                           (let [parent-node (deps-graph/get-node deps-graph lhs)
+                                 child-node (deps-graph/get-node deps-graph rhs)]
+                             [(:dot-node-id parent-node) (:dot-node-id child-node)
+                              (merge
+                               {}
+                               (when conflict-info
+                                 {:color :red
+                                  :label (str (:location conflict-info))
+                                  :penwidth 2
+                                  :weight 500}))])))
+                    (concat dot-seq)
+                    dorothy-core/digraph
+                    dorothy-core/dot)]
+    retval))
+
+
+(def cli-help ["-h" "--help" "This usage summary."])
+
+(def cli-save-dot ["-s" "--save-dot" "Save the generated GraphViz DOT file well as the output file."])
+
+(def cli-no-view
+  ["-n" "--no-view" "If given, the image will not be opened after creation."
+   :default false])
+
+(defn ^:private allowed-extension
+  [path]
+  (let [x (str/last-index-of path ".")
+        ext (subs path (inc x))]
+    (#{"png" "pdf"} ext)))
+
+(defn cli-output-file
+  [default-path]
+  ["-o" "--output-file FILE" "Output file path. Extension chooses format: pdf or png."
+   :id :output-path
+   :default default-path
+   :validate [allowed-extension "Supported output formats are 'pdf' and 'png'."]])
+
+(def cli-vertical
+  ["-v" "--vertical" "Use a vertical, not horizontal, layout."])
+
+(defn conj-option
+  "Used as :assoc-fn for an option to conj'es the values together."
+  [m k v]
+  (update m k conj v))
+
+(defn ^:private usage
+  [command summary errors]
+  (->> [(str "Usage: depsviz [fname?] [options]")
+        ""
+        "Options:"
+        summary]
+       (str/join \newline)
+       println)
+
+  (when errors
+    (println "\nErrors:")
+    (doseq [e errors] (println " " e)))
+
+  nil)
+
+
+(def vizdeps-cli-options
+  [["-d" "--dev" "Include :dev dependencies in the graph."]
+   ["-f" "--focus ARTIFACT" "Excludes artifacts whose names do not match a supplied value. Repeatable."
+    :assoc-fn conj-option]
+   ["-H" "--highlight ARTIFACT" "Highlight the artifact, and any dependencies to it, in blue. Repeatable."
+    :assoc-fn conj-option]
+   ["-i" "--input FNAME" "File to draw dependencies from"
+    :id :input
+    :default "deps.edn"]
+   cli-no-view
+   (cli-output-file "dependencies.pdf")
+   ["-p" "--prune" "Exclude artifacts and dependencies that do not involve version conflicts."]
+   cli-save-dot
+   cli-vertical
+   cli-help])
+
+
+(defn parse-cli-options
+  "Parses the CLI options; handles --help and errors (returning nil) or just
+  returns the parsed options."
+  [command cli-options args]
+  (let [{:keys [options errors summary]} (cli/parse-opts args cli-options)]
+    (if (or (:help options) errors)
+      (usage command summary errors)
+      options)))
+
+
+(defn- extension
+  [^String item]
+  (let [last-idx (.lastIndexOf item ".")]
+    (if (> last-idx 0)
+      (.substring item (+ last-idx 1))
+      "")))
+
+
+(defn doit
+  [args]
+  (let [options (parse-cli-options "depsviz" vizdeps-cli-options args)
+        out-format (-> (:output-path options)
+                       extension
+                       keyword)]
+    (when-not (.exists (io/file (:input options)))
+      (throw (ex-info "Input file does not exist:" {:input (:input options)})))
+    (-> (build-dot (:input options) options)
+        (dorothy-jvm/save! (:output-path options) {:format :pdf}))
+    (when-not (:no-view options)
+      (browse-url (:output-path options)))))
 
 
 (defn -main
   [& args]
-  (let [fname (or (first args) "deps.edn")]
-    (-> (build-dot fname {})
-        (dorothy-jvm/save! "dependencies.pdf" {:format :pdf}))
-    (browse-url "dependencies.pdf")
-    (shutdown-agents)))
+  (doit args)
+  (shutdown-agents))
