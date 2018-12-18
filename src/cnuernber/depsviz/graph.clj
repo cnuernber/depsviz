@@ -148,3 +148,80 @@
     (tree-seq #(contains? p->c-map %)
               #(get p->c-map %)
               node-id)))
+
+
+(defn merge-nodes-by
+  [graph key-fn filter-fn]
+  (->> (:nodes graph)
+       vals
+       (group-by key-fn)
+       (map (fn [[item-key nodes-to-merge]]
+              (when (and (> (count nodes-to-merge) 1)
+                         (first (filter filter-fn nodes-to-merge)))
+                nodes-to-merge)))
+       (remove nil?)
+       (reduce
+        (fn [graph node-merge-seq]
+          (if-let [target-node (->> (filter filter-fn node-merge-seq)
+                                    first)]
+            (let [target-id (:id target-node)]
+              (->> (remove filter-fn node-merge-seq)
+                   (reduce (fn [graph {:keys [id] :as merge-node}]
+                             (let [edges-to-from (filter #(contains? (set %) id) (:edges graph))
+                                   edges-to (filter #(= id (second %)) edges-to-from)
+                                   edges-from (filter #(= id (first %)) edges-to-from)]
+                               (-> graph
+                                   (update :nodes dissoc id)
+                                   (update :edges
+                                           (fn [edge-set]
+                                             (let [edge-set (c-set/difference edge-set
+                                                                              (set edges-to)
+                                                                              (set edges-from))]
+                                               (c-set/union edge-set (->> edges-to
+                                                                          (map #(-> (assoc % 1 target-id)
+                                                                                    (conj merge-node)))
+                                                                          set))))))))
+                           graph)))
+            graph))
+        graph)))
+
+
+(defn path-to-root
+  [child->parent-map target-id]
+  (let [parents (get child->parent-map target-id)]
+    (concat [target-id]
+            (mapcat (partial path-to-root child->parent-map)
+                    parents))))
+
+
+(defn remove-nodes
+  [graph node-id-seq]
+  (let [remove-node-ids (set node-id-seq)]
+    (-> graph
+        (update :nodes #(apply dissoc % remove-node-ids))
+        (update :edges (fn [edges]
+                         (->> edges
+                              (remove #(or (contains? remove-node-ids (first %))
+                                           (contains? remove-node-ids (second %))))
+                              set))))))
+
+
+(defn keep-only
+  [graph node-id-seq]
+  (when-not (seq node-id-seq)
+    (throw (ex-info "Keep-seq is empty.  This results in an empty graph" {})))
+  (let [child->parent-map (child->parent-map graph)]
+    (->> node-id-seq
+         (mapcat (partial path-to-root child->parent-map))
+         set
+         (c-set/difference (set (keys (:nodes graph))))
+         (remove-nodes graph))))
+
+
+(defn find-nodes
+  "Find nodes that match or partially match string.
+  Return sequence of node-ids"
+  [graph node-name]
+  (->> (keys (:nodes graph))
+       (filter #(or (= node-name (str (first %)))
+                    (= node-name (name (first %)))))))

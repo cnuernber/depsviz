@@ -100,40 +100,48 @@
         (update :edges c-set/union root-edges))))
 
 
-(defn merge-nodes-by
-  [graph key-fn filter-fn]
-  (->> (:nodes graph)
-       vals
-       (group-by key-fn)
-       (map (fn [[item-key nodes-to-merge]]
-              (when (and (> (count nodes-to-merge) 1)
-                         (first (filter filter-fn nodes-to-merge)))
-                nodes-to-merge)))
-       (remove nil?)
-       (reduce
-        (fn [graph node-merge-seq]
-          (if-let [target-node (->> (filter filter-fn node-merge-seq)
-                                    first)]
-            (let [target-id (:id target-node)]
-              (->> (remove filter-fn node-merge-seq)
-                   (reduce (fn [graph {:keys [id] :as merge-node}]
-                             (let [edges-to-from (filter #(contains? (set %) id) (:edges graph))
-                                   edges-to (filter #(= id (second %)) edges-to-from)
-                                   edges-from (filter #(= id (first %)) edges-to-from)]
-                               (-> graph
-                                   (update :nodes dissoc id)
-                                   (update :edges
-                                           (fn [edge-set]
-                                             (let [edge-set (c-set/difference edge-set
-                                                                              (set edges-to)
-                                                                              (set edges-from))]
-                                               (c-set/union edge-set (->> edges-to
-                                                                          (map #(-> (assoc % 1 target-id)
-                                                                                    (conj merge-node)))
-                                                                          set))))))))
-                           graph)))
-            graph))
-        graph)))
+(defn selected?
+  [node]
+  (= (:select node)
+     (:location node)))
+
+
+(defn do-prune
+  "Prune all items that have no conflict or are dependent something that has a conflict."
+  [graph]
+  (->> (:edges graph)
+       (filter #(> (count %) 2))
+       (map second)
+       (deps-graph/keep-only graph)))
+
+
+(defn do-focus
+  [graph node-names]
+  (->> node-names
+       (mapcat (partial deps-graph/find-nodes graph))
+       (deps-graph/keep-only graph)))
+
+
+(defn do-highlight
+  [graph node-name]
+  (let [child->parent-map (deps-graph/child->parent-map graph)]
+    (->> (deps-graph/find-nodes graph node-name)
+         (mapcat (partial deps-graph/path-to-root child->parent-map))
+         distinct
+         (reduce #(update-in %1 [:nodes %2] assoc :highlight? true)
+                 graph))))
+
+
+(defn process-graph-options
+  [graph options]
+  (let [{:keys [prune focus highlight]} options]
+    (cond-> graph
+      prune
+      do-prune
+      focus
+      (do-focus focus)
+      highlight
+      (do-highlight highlight))))
 
 
 (defn node-name
@@ -141,17 +149,9 @@
   (format "%s\n%s" (first node-id) (second node-id)))
 
 
-(defn selected?
-  [node]
-  (= (:select node)
-     (:location node)))
-
-
-(defn build-dot
-  [fname options]
-  (let [deps-type-tree (deps->tools-graph fname options)
-        deps-graph (-> (invert-tools-deps deps-type-tree)
-                       (merge-nodes-by :name selected?))
+(defn graph->dot
+  [deps-graph options]
+  (let [deps-graph (process-graph-options deps-graph options)
         node-list (->> (deps-graph/dfs-seq deps-graph)
                        (map (partial deps-graph/get-node deps-graph)))
         root (first node-list)
@@ -163,24 +163,40 @@
                               [(:dot-node-id node) (merge {:label item-name}
                                                           (when-not (selected? node)
                                                             {:color :red}))])))
-                     (concat [{:attrs {:rankdir :LR} :type ::dorothy-core/graph-attrs}
-                              [(:dot-node-id root) {:label root-name :shape :doubleoctagon}]]))
-        retval (->> (:edges deps-graph)
-                    (map (fn [[lhs rhs conflict-info]]
-                           (let [parent-node (deps-graph/get-node deps-graph lhs)
-                                 child-node (deps-graph/get-node deps-graph rhs)]
-                             [(:dot-node-id parent-node) (:dot-node-id child-node)
-                              (merge
-                               {}
-                               (when conflict-info
-                                 {:color :red
-                                  :label (str (:location conflict-info))
-                                  :penwidth 2
-                                  :weight 500}))])))
-                    (concat dot-seq)
-                    dorothy-core/digraph
-                    dorothy-core/dot)]
-    retval))
+                     (concat [{:attrs {:rankdir (if (:vertical options)
+                                                  :TB
+                                                  :LR)}
+                               :type ::dorothy-core/graph-attrs}
+                              [(:dot-node-id root) {:label root-name :shape :doubleoctagon}]]))]
+    (->> (:edges deps-graph)
+         (map (fn [[lhs rhs conflict-info]]
+                (let [parent-node (deps-graph/get-node deps-graph lhs)
+                      child-node (deps-graph/get-node deps-graph rhs)]
+                  [(:dot-node-id parent-node) (:dot-node-id child-node)
+                   (merge
+                    {}
+                    (when (or (:highlight? parent-node)
+                              (:highlight? child-node))
+                      {:pendwidth 2
+                       :weight 500})
+                    (when conflict-info
+                      {:color :red
+                       :label (str (:location conflict-info))
+                       :penwidth 2
+                       :weight 500}))])))
+         (concat dot-seq)
+         dorothy-core/digraph
+         dorothy-core/dot)))
+
+
+(defn build-dot
+  [fname options]
+  (-> (deps->tools-graph fname options)
+      invert-tools-deps
+      ;;Then merge unique items that have a conflict into their respective
+      ;;chosen items
+      (deps-graph/merge-nodes-by :name selected?)
+      (graph->dot options)))
 
 
 (def cli-help ["-h" "--help" "This usage summary."])
@@ -271,10 +287,19 @@
                        keyword)]
     (when-not (.exists (io/file (:input options)))
       (throw (ex-info "Input file does not exist:" {:input (:input options)})))
-    (-> (build-dot (:input options) options)
-        (dorothy-jvm/save! (:output-path options) {:format :pdf}))
-    (when-not (:no-view options)
-      (browse-url (:output-path options)))))
+    (let [dot-data (build-dot (:input options) options)
+          output-path (:output-path options)]
+
+      (dorothy-jvm/save! dot-data output-path {:format :pdf})
+
+      (when (:save-dot options)
+        (let [x (str/last-index-of output-path ".")
+              dot-path (str (subs output-path 0 x) ".dot")
+              ^File dot-file (io/file dot-path)]
+          (spit dot-file dot-data)))
+
+      (when-not (:no-view options)
+        (browse-url output-path)))))
 
 
 (defn -main
