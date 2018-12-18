@@ -245,8 +245,7 @@
 
 
 (def vizdeps-cli-options
-  [["-d" "--dev" "Include :dev dependencies in the graph."]
-   ["-f" "--focus ARTIFACT" "Excludes artifacts whose names do not match a supplied value. Repeatable."
+  [["-f" "--focus ARTIFACT" "Excludes artifacts whose names do not match a supplied value. Repeatable."
     :assoc-fn conj-option]
    ["-H" "--highlight ARTIFACT" "Highlight the artifact, and any dependencies to it, in blue. Repeatable."
     :assoc-fn conj-option]
