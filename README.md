@@ -8,8 +8,15 @@ Visualize deps.edn dependencies.  Based on the excellent [vizdeps](https://githu
 ## Usage
 
 ```bash
-clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.2"}}}' -m cnuernber.depsviz
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.3"}}}' -m cnuernber.depsviz -i test/data/deps.edn
 ```
+
+More example usages are [here](scripts/build-docs.sh).
+
+The graphs can get quite [large](docs/full-example.pdf).  There are two methods to cut down on them:
+
+* [pruning](docs/prune-example.pdf)
+* [focusing](docs/focus-example.pdf)
 
 ## License
 
