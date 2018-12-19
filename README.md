@@ -2,13 +2,14 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/cnuernber/depsviz.svg)](https://clojars.org/cnuernber/depsviz)
 
-Visualize deps.edn dependencies.  Based on the excellent [vizdeps](https://github.com/clj-commons/vizdeps/) project.
+Visualize deps.edn or project.clj dependencies.  Based on the excellent [vizdeps](https://github.com/clj-commons/vizdeps/) project.
 
 
 ## Usage
 
 ```bash
-clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.3"}}}' -m cnuernber.depsviz -i test/data/deps.edn
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.4"}}}' -m cnuernber.depsviz -i test/data/deps.edn
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.4"}}}' -m cnuernber.depsviz -i test/data/project.clj
 ```
 
 More example usages are [here](scripts/build-docs.sh).
