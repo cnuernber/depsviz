@@ -223,5 +223,4 @@
   Return sequence of node-ids"
   [graph node-name]
   (->> (keys (:nodes graph))
-       (filter #(or (= node-name (str (first %)))
-                    (= node-name (name (first %)))))))
+       (filter #(.contains (str (first %)) node-name))))

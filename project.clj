@@ -8,6 +8,8 @@
                  [com.stuartsierra/dependency "0.2.0"]
                  [dorothy "0.0.7"]
                  [medley "1.0.0"]
-                 [org.clojure/tools.deps.alpha "0.5.460"]]
+                 [org.clojure/tools.deps.alpha "0.5.460"]
+                 [leiningen-core "2.8.3"]
+                 [org.apache.maven.wagon/wagon-http "3.0.0"]]
   :main cnuernber.depsviz
   :aot [cnuernber.depsviz])

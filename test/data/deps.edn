@@ -7,4 +7,6 @@
         org.clojure/tools.deps.alpha {:mvn/version "0.5.460"}
         org.clojure/core.async {:git/url "https://github.com/clojure/core.async.git"
                                 :sha "ecea2539a724a415b15e50f12815b4ab115cfd35"}
-        }}
+        leiningen-core {:mvn/version "2.8.3"}
+        org.apache.maven.wagon/wagon-http {:mvn/version "3.0.0"}}
+ }
