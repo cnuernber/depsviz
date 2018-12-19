@@ -172,8 +172,7 @@
    ["-H" "--highlight ARTIFACT" "Highlight the artifact, and any dependencies to it, in blue. Repeatable."
     :assoc-fn conj-option]
    ["-i" "--input FNAME" "File to draw dependencies from"
-    :id :input
-    :default "deps.edn"]
+    :id :input]
    cli-no-view
    (cli-output-file "dependencies.pdf")
    ["-p" "--prune" "Exclude artifacts and dependencies that do not involve version conflicts."]
@@ -197,10 +196,14 @@
   (let [options (parse-cli-options "depsviz" vizdeps-cli-options args)
         out-format (-> (:output-path options)
                        extension
-                       keyword)]
-    (when-not (.exists (io/file (:input options)))
-      (throw (ex-info "Input file does not exist:" {:input (:input options)})))
-    (let [dot-data (build-dot (:input options) options)
+                       keyword)
+        input-file (or (:input options)
+                       (->> ["deps.edn" "project.clj"]
+                            (filter #(.exists (io/file %)))
+                            first))]
+    (when-not  (.exists (io/file input-file))
+      (throw (ex-info "Input file does not exist:" {:input input-file})))
+    (let [dot-data (build-dot input-file options)
           output-path (:output-path options)]
 
       (dorothy-jvm/save! dot-data output-path {:format :pdf})

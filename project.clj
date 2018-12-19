@@ -1,4 +1,4 @@
-(defproject cnuernber/depsviz "0.5-SNAPSHOT"
+(defproject cnuernber/depsviz "0.5"
   :description "View deps.edn transitive dependencies.  Inspred "
   :url "http://github.com/cnuernber/depsviz"
   :license {:name "Eclipse Public License"
@@ -9,7 +9,7 @@
                  [dorothy "0.0.7"]
                  [medley "1.0.0"]
                  [org.clojure/tools.deps.alpha "0.5.460"]
-                 [leiningen-core "2.8.3"]
+                 [leiningen-core "2.8.2"]
                  [org.apache.maven.wagon/wagon-http "3.0.0"]]
   :main cnuernber.depsviz
   :aot [cnuernber.depsviz])
