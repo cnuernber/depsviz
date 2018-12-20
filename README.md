@@ -60,7 +60,7 @@ Options:
   -H, --highlight ARTIFACT                       Highlight the artifact, and any dependencies to it, in blue. Repeatable.
   -i, --input FNAME                              File to draw dependencies from. Defaults to (first-that-exists ["deps.edn" "project.clj"]).
   -w, --with-profiles PROFILE                    List of leiningen profiles (defaults to user).  Additive only.  Repeatable.
-  -r, --remove ARTIFACT                          Excludes artifaces whose names match supplied value (defaults to org.clojure). Repeatable.
+  -r, --remove ARTIFACT                          Excludes artifaces whose names match supplied value. Repeatable.
   -n, --no-view                                  If given, the image will not be opened after creation.
   -o, --output-file FILE       dependencies.pdf  Output file path. Extension chooses format: pdf or png.
   -p, --prune                                    Exclude artifacts and dependencies that do not involve version conflicts.
