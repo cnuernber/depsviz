@@ -8,6 +8,17 @@ Visualize deps.edn or project.clj dependencies.  Based on the excellent [vizdeps
 ## Usage
 
 
+You must install graphviz:
+
+```
+sudo apt install graphviz
+```
+
+```
+brew install graphviz
+```
+
+
 ### Simple Command Line
 
 First install the script:
