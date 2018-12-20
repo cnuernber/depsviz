@@ -9,9 +9,23 @@
              [clojure.set :as c-set]))
 
 
+(defn- full-qualify-name
+  [artifact-name]
+  (if-not (namespace artifact-name)
+    (symbol (name artifact-name) (name artifact-name))
+    artifact-name))
+
+
+(defn- simplify-name
+  [artifact-name]
+  (if (= (namespace artifact-name) (name artifact-name))
+    (symbol (name artifact-name))
+    artifact-name))
+
+
 (defn- dep-vec->node-id
   [dep-vec]
-  [(first dep-vec) {:mvn/version (second dep-vec)}])
+  [(full-qualify-name (first dep-vec)) {:mvn/version (second dep-vec)}])
 
 
 (defn- ensure-node
@@ -33,14 +47,15 @@
 (defn- get-dependencies
   [project graph dependency]
   (let [parent-key (dep-vec->node-id dependency)
-        dep-list (-> (#'classpath/get-dependencies
-                      :dependencies nil
-                      (assoc project :dependencies [dependency]))
-                     (get dependency))]
+        dep-map (#'classpath/get-dependencies
+                 :dependencies nil
+                 (assoc project :dependencies [dependency]))
+        dep-list (or (get dep-map (update dependency 0 full-qualify-name))
+                     (get dep-map (update dependency 0 simplify-name)))]
     (reduce (fn [graph dep-vec]
               (let [dep-key (dep-vec->node-id dep-vec)]
                 (if (get-in graph [:nodes dep-key])
-                  graph
+                  (update graph :edges conj [parent-key dep-key])
                   (-> graph
                       (ensure-node dep-key)
                       (update :edges conj [parent-key dep-key])
@@ -78,9 +93,7 @@
     (aether/register-wagon-factory! "http" #'main/insecure-http-abort)
     (configure-http)
     (let [project (project/read fname)
-          profiles (if-not (:dev options)
-                   [:user]
-                   [:user :dev])
+          profiles (:with-profiles options)
           project (project/set-profiles project profiles)
           root-name (symbol (-> project :group str) (-> project :name str))
           root-version {:mvn/version (:version project)}

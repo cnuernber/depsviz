@@ -45,16 +45,29 @@
                  graph))))
 
 
+(defn do-remove
+  [graph node-names]
+  (let [cur-roots (set (deps-graph/roots graph))
+        graph (->> node-names
+                   (mapcat (partial deps-graph/find-nodes graph))
+                   (deps-graph/remove-nodes graph))
+        new-roots (set (deps-graph/roots graph))
+        orphaned-nodes (c-set/difference cur-roots new-roots)]
+    (deps-graph/remove-nodes graph orphaned-nodes)))
+
+
 (defn process-graph-options
   [graph options]
-  (let [{:keys [prune focus highlight]} options]
+  (let [{:keys [prune focus highlight remove]} options]
     (cond-> graph
       prune
       do-prune
       focus
       (do-focus focus)
       highlight
-      (do-highlight highlight))))
+      (do-highlight highlight)
+      remove
+      (do-remove remove))))
 
 
 (defn node-name
@@ -152,7 +165,7 @@
 
 (defn ^:private usage
   [command summary errors]
-  (->> [(str "Usage: depsviz [fname?] [options]")
+  (->> [(str "Usage: depsviz [options]")
         ""
         "Options:"
         summary]
@@ -171,8 +184,12 @@
     :assoc-fn conj-option]
    ["-H" "--highlight ARTIFACT" "Highlight the artifact, and any dependencies to it, in blue. Repeatable."
     :assoc-fn conj-option]
-   ["-i" "--input FNAME" "File to draw dependencies from"
+   ["-i" "--input FNAME" "File to draw dependencies from. Defaults to (first-that-exists [\"deps.edn\" \"project.clj\"])."
     :id :input]
+   ["-w" "--with-profiles PROFILE" "List of leiningen profiles (defaults to user).  Additive only.  Repeatable."
+    :assoc-fn conj-option]
+   ["-r" "--remove ARTIFACT" "Excludes artifaces whose names match supplied value (defaults to org.clojure). Repeatable."
+    :assoc-fn conj-option]
    cli-no-view
    (cli-output-file "dependencies.pdf")
    ["-p" "--prune" "Exclude artifacts and dependencies that do not involve version conflicts."]
@@ -191,31 +208,42 @@
       options)))
 
 
+(defn parse-options
+  [args]
+  (when-let [options (parse-cli-options "depsviz" vizdeps-cli-options args)]
+    (update options :with-profiles (fn [profile-list]
+                                     (if-not profile-list
+                                       [:user]
+                                       (mapv keyword profile-list))))))
+
+
 (defn doit
   [args]
-  (let [options (parse-cli-options "depsviz" vizdeps-cli-options args)
-        out-format (-> (:output-path options)
-                       extension
-                       keyword)
-        input-file (or (:input options)
-                       (->> ["deps.edn" "project.clj"]
-                            (filter #(.exists (io/file %)))
-                            first))]
-    (when-not  (.exists (io/file input-file))
-      (throw (ex-info "Input file does not exist:" {:input input-file})))
-    (let [dot-data (build-dot input-file options)
-          output-path (:output-path options)]
+  (when-let [options (parse-options args)]
+    (let [out-format (-> (:output-path options)
+                         extension
+                         keyword)
+          input-file (or (:input options)
+                         (->> ["deps.edn" "project.clj"]
+                              (filter #(.exists (io/file %)))
+                              first))]
+      (when-not  (.exists (io/file input-file))
+        (throw (ex-info "Input file does not exist:" {:input input-file})))
+      (let [dot-data (build-dot input-file options)
+            output-path (:output-path options)
+            output-format (-> (extension output-path)
+                              keyword)]
 
-      (dorothy-jvm/save! dot-data output-path {:format :pdf})
+        (dorothy-jvm/save! dot-data output-path {:format output-format})
 
-      (when (:save-dot options)
-        (let [x (str/last-index-of output-path ".")
-              dot-path (str (subs output-path 0 x) ".dot")
-              ^File dot-file (io/file dot-path)]
-          (spit dot-file dot-data)))
+        (when (:save-dot options)
+          (let [x (str/last-index-of output-path ".")
+                dot-path (str (subs output-path 0 x) ".dot")
+                ^File dot-file (io/file dot-path)]
+            (spit dot-file dot-data)))
 
-      (when-not (:no-view options)
-        (browse-url output-path)))))
+        (when-not (:no-view options)
+          (browse-url output-path))))))
 
 
 (defn -main
