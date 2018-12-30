@@ -46,27 +46,31 @@
 
 (defn- get-dependencies
   [project graph dependency]
-  (let [parent-key (dep-vec->node-id dependency)
-        dep-map (#'classpath/get-dependencies
-                 :dependencies nil
-                 (assoc project :dependencies [dependency]))
-        dep-list (or (get dep-map (update dependency 0 full-qualify-name))
-                     (get dep-map (update dependency 0 simplify-name)))]
-    (reduce (fn [graph dep-vec]
-              (let [dep-key (dep-vec->node-id dep-vec)]
-                (if (get-in graph [:nodes dep-key])
-                  (update graph :edges conj [parent-key dep-key])
-                  (-> graph
-                      (ensure-node dep-key)
-                      (update :edges conj [parent-key dep-key])
-                      (#(get-dependencies project % dep-vec))))))
-            graph
-            dep-list)))
+  (try
+    (let [parent-key (dep-vec->node-id dependency)
+          dep-map (#'classpath/get-dependencies
+                   :dependencies nil
+                   (assoc project :dependencies [dependency]))
+          dep-list (or (get dep-map (update dependency 0 full-qualify-name))
+                       (get dep-map (update dependency 0 simplify-name)))]
+      (reduce (fn [graph dep-vec]
+                (let [dep-key (dep-vec->node-id dep-vec)]
+                  (if (get-in graph [:nodes dep-key])
+                    (update graph :edges conj [parent-key dep-key])
+                    (-> graph
+                        (ensure-node dep-key)
+                        (update :edges conj [parent-key dep-key])
+                        (#(get-dependencies project % dep-vec))))))
+              graph
+              dep-list))
+    (catch Throwable e
+      (println (format "Failed to get dependencies for %s: %s" dependency e))
+      graph)))
 
 
 (defn user-agent []
   (format "Leiningen/%s (Java %s; %s %s; %s)"
-          "2.18.3" (System/getProperty "java.vm.name")
+          "2.18.2" (System/getProperty "java.vm.name")
           (System/getProperty "os.name") (System/getProperty "os.version")
           (System/getProperty "os.arch")))
 
