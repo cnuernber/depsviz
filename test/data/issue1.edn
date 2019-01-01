@@ -1,0 +1,11 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.9.0"}
+        techascent/tech.persist {:mvn/version "0.1.7"}
+        com.datomic/datomic-pro {:mvn/version "0.9.5697"
+                                 :exclusions [com.google.guava/guava]}
+        vvvvalvalval/datomock {:mvn/version "0.2.2"}}
+ :mvn/repos {"releases" {:url "s3://techascent.jars/releases/"}
+             ;;Note:  You have to have a mydatomiccom entry in your
+             ;;~/.m2/settings.xml
+             ;;See readme
+             "mydatomiccom" {:url "https://my.datomic.com/repo"}}}

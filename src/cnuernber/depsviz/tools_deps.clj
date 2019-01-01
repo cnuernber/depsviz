@@ -21,7 +21,7 @@
                    (string? deps-map)
                    (-> (slurp deps-map)
                        edn/read-string
-                       (assoc :mvn/repos mvn/standard-repos))
+                       (update :mvn/repos merge mvn/standard-repos))
                    (map? deps-map)
                    deps-map)
         {:keys [extra-deps default-deps override-deps verbose]} args-map
