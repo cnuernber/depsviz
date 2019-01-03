@@ -4,7 +4,7 @@
         com.stuartsierra/dependency {:mvn/version "0.2.0"}
         dorothy {:mvn/version  "0.0.7"}
         medley {:mvn/version  "1.0.0"}
-        org.clojure/tools.deps.alpha {:mvn/version "0.6.474"}
+        org.clojure/tools.deps.alpha {:mvn/version "0.5.460"}
         leiningen-core {:mvn/version "2.8.2"}
         org.apache.maven.wagon/wagon-http {:mvn/version "3.0.0"}}
  }
