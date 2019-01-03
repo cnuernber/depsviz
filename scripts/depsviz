@@ -1,5 +1,5 @@
 #!/bin/sh
 
-DEPSVIZ_DEPS='{:deps {cnuernber/depsviz {:mvn/version "0.8"}}}'
+DEPSVIZ_DEPS='{:deps {cnuernber/depsviz {:mvn/version "0.9"}}}'
 
 clojure -Sdeps "$DEPSVIZ_DEPS" -m cnuernber.depsviz $@
