@@ -39,8 +39,8 @@ The system will search for project.clj or deps.edn and display dependencies.
 ### Raw Command Line
 
 ```bash
-clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.6"}}}' -m cnuernber.depsviz -i test/data/deps.edn
-clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.6"}}}' -m cnuernber.depsviz -i test/data/project.clj
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.8"}}}' -m cnuernber.depsviz -i test/data/deps.edn
+clojure -Sdeps '{:deps {cnuernber/depsviz {:mvn/version "0.8"}}}' -m cnuernber.depsviz -i test/data/project.clj
 ```
 
 More example usages are [here](scripts/build-docs.sh).
