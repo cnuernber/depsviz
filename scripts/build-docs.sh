@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEPSVIZ_DEPS='{:deps {cnuernber/depsviz {:mvn/version "0.7"}}}'
+DEPSVIZ_DEPS='{:deps {cnuernber/depsviz {:mvn/version "0.8"}}}'
 
 
 clojure -Sdeps "$DEPSVIZ_DEPS" -m cnuernber.depsviz -i test/data/deps.edn --no-view --output-file docs/full-example.pdf
