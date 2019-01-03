@@ -1,4 +1,4 @@
-(defproject cnuernber/depsviz "0.9"
+(defproject cnuernber/depsviz "0.1-SNAPSHOT"
   :description "View deps.edn transitive dependencies.  Inspred "
   :url "http://github.com/cnuernber/depsviz"
   :license {:name "Eclipse Public License"
